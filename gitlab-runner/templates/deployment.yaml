@@ -1,0 +1,107 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  replicas: {{ .Values.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}
+    spec:
+      {{- if .Values.scheduling.affinity }}
+      {{- if .Values.scheduling.affinity.node }}
+      {{- if .Values.scheduling.affinity.node.labels }}
+      affinity:
+        nodeAffinity:
+          {{ .Values.scheduling.affinity.node.type }}:
+            nodeSelectorTerms:
+            - matchExpressions:
+                {{- range .Values.scheduling.affinity.node.labels }}
+                - key: {{ .key }}
+                  operator: {{ .operator }}
+                  values:
+                  {{- range .values }}
+                  - {{ . }}
+                  {{- end }}
+                {{- end }}
+      {{- end }}
+      {{- end }}
+      {{- end }}
+      initContainers:
+        - name: init-runner
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ default "" .Values.imagePullPolicy | quote }}
+          args:
+            - register
+          env:
+            - name: CI_SERVER_URL
+              value: {{ .Values.gitlabUrl | quote }}
+            - name: REGISTER_NON_INTERACTIVE
+              value: "true"
+            - name: REGISTRATION_TOKEN
+              value: {{ .Values.registrationToken | quote }}
+            - name: RUNNER_EXECUTOR
+              value: kubernetes
+            - name: RUNNER_REQUEST_CONCURRENCY
+              value: {{ .Values.runner.concurrency | quote }}
+            # Must use privileged mode for docker-in-docker
+            - name: KUBERNETES_PRIVILEGED
+              value: {{ if .Values.runner.privileged }}"true"{{ else }}"false"{{ end }}
+          volumeMounts:
+            - mountPath: /etc/gitlab-runner
+              name: config
+            - mountPath: /etc/ssl/certs
+              name: cacerts
+              readOnly: true
+        - name: add-docker-socket
+          image: alpine
+          command: [ "sh", "-c" ]
+          args:
+            - cat /tmp/config/additional.config >> /etc/gitlab-runner/config.toml
+          env:
+          volumeMounts:
+            - mountPath: /etc/gitlab-runner
+              name: config
+            - mountPath: /tmp/config
+              name: additional-config
+              readOnly: true
+      containers:
+        - name: runner
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ default "" .Values.imagePullPolicy | quote }}
+          args:
+            - run
+          volumeMounts:
+            - mountPath: /etc/gitlab-runner
+              name: config
+            - mountPath: /etc/ssl/certs
+              name: cacerts
+              readOnly: true
+      {{- if .Values.rbac.enabled }}
+      serviceAccountName: "{{ .Release.Name }}-gitlab-runner-serviceaccount"
+      {{- end }}
+      {{- if .Values.scheduling.tolerations }}
+      tolerations:
+      {{- range .Values.scheduling.tolerations }}
+      - key: {{ .key }}
+        value: {{ .value }}
+        operator: Equal
+        effect: {{ .effect }}
+      {{- end }}
+      {{- end }}
+      volumes:
+        - name: cacerts
+          hostPath:
+            path: /usr/share/ca-certificates/mozilla
+        - name: config
+          emptyDir: {}
+        - configMap:
+            name: "{{ .Release.Name }}-additional-config"
+          name: additional-config
+

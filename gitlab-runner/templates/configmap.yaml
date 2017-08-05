@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Release.Name }}-additional-config"
+  labels:
+    app: {{ template "fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+data:
+  ## This is the additional config for gitlab runner.
+  ## ref: https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/files/gitlab-config-template/gitlab.rb.template
+  ##
+  additional.config: |
+    # foo
+        namespace = {{ .Values.runner.namespace | quote }}
+        namespace_overwrite_allowed = "ci-.*"
+        privileged = {{ .Values.runner.privileged | quote }}
+        cpu_limit = {{ .Values.runner.limits.jobs.cpuLimit | quote }}
+        memory_limit = {{ .Values.runner.limits.jobs.memoryLimit | quote }}
+        service_cpu_limit = {{ .Values.runner.limits.service.cpuLimit | quote }}
+        service_memory_limit = {{ .Values.runner.limits.service.memoryLimit | quote }}
+        helper_cpu_limit = {{ .Values.runner.limits.helper.cpuLimit | quote }}
+        helper_memory_limit = {{ .Values.runner.limits.helper.memoryLimit | quote }}
+        poll_interval = 5
+        poll_timeout = 3600
+        {{- if .Values.runner.dockerEnabled }}
+        [[runners.kubernetes.volumes.host_path]]
+          name = "docker-socket"
+          mount_path = "/var/run/docker.sock"
+          host_path = "/var/run/docker.sock"
+        {{- end }}
+    #
