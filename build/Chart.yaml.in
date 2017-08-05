@@ -1,0 +1,19 @@
+name: gitlab-runner
+version: ${CHART_VER}-${CHART_REL}
+description: GitLab CI/CD Runner
+keywords:
+- git
+- ci
+- deploy
+- issue tracker
+- code review
+- wiki
+home: https://about.gitlab.com
+sources:
+- https://hub.docker.com/r/gitlab/gitlab-ce/
+- https://docs.gitlab.com/omnibus/
+- https://github.com/samsung-cnct/chart-gitlab-ce
+icon: https://gitlab.com/uploads/group/avatar/6543/gitlab-logo-square.png
+maintainers:
+- name: Michael Venezia
+  email: mvenezia@gmail.com

@@ -1,0 +1,67 @@
+## GitLab Runner image
+## ref: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+##
+image: gitlab/gitlab-runner:v9.4.2
+
+## Specify a imagePullPolicy
+## 'Always' if imageTag is 'latest', else set to 'IfNotPresent'
+## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+##
+# imagePullPolicy:
+
+## The URL (with protocol) that the runners should connect with
+## Should probably be gitlab base href + /ci
+## ref: https://docs.gitlab.com/runner/executors/kubernetes.html
+##
+gitlabUrl: "http://gitlab.mysite.com/ci"
+
+replicas: 1
+
+## The token the runner should present when registering
+## You can find this at gitlab base href + /admin/runners - like http://gitlab.mysite.com/admin/runners
+##
+registrationToken: "keanu-connery-53"
+
+runner:
+  concurrency: 4
+  enableDocker: true
+  privileged: true
+  namespace: gitlab
+  limits:
+    jobs:
+      cpuLimit: 1
+      memoryLimit: 1Gi
+    service:
+      cpuLimit: 1
+      memoryLimit: 1Gi
+    helper:
+      cpuLimit: 500m
+      memoryLimit: 200Mi
+
+scheduling:
+  affinity:
+    node:
+      type: requiredDuringSchedulingIgnoredDuringExecution
+      labels:
+#      - key: iamalabelkey
+#        operator: In
+#        values: ["value1", "value2"]
+  tolerations:
+#  - key: iamataintkey
+#    value: taintvalue
+#    effect: NoSchedule
+
+networkPolicy:
+  ingress:
+#    enabled: true
+#    namespaceLabels:
+#      - key: tenant
+#        value: customer1
+#    podLabels:
+#      - key: app
+#        value: frontend
+
+## Configuration values for RBAC
+## RBAC is needed by gitlab for prometheus data exports
+rbac:
+  enabled: true
