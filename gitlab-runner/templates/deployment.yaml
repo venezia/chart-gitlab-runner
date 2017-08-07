@@ -1,3 +1,4 @@
+{{- if and (include "gitlabUrl" .) (default "" .Values.runnerRegistrationToken) }}
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -8,7 +9,7 @@ metadata:
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
 spec:
-  replicas: {{ .Values.replicas }}
+  replicas: 1
   template:
     metadata:
       labels:
@@ -33,56 +34,77 @@ spec:
       {{- end }}
       {{- end }}
       {{- end }}
-      initContainers:
-        - name: init-runner
-          image: {{ .Values.image }}
-          imagePullPolicy: {{ default "" .Values.imagePullPolicy | quote }}
-          args:
-            - register
-          env:
-            - name: CI_SERVER_URL
-              value: {{ .Values.gitlabUrl | quote }}
-            - name: REGISTER_NON_INTERACTIVE
-              value: "true"
-            - name: REGISTRATION_TOKEN
-              value: {{ .Values.registrationToken | quote }}
-            - name: RUNNER_EXECUTOR
-              value: kubernetes
-            - name: RUNNER_REQUEST_CONCURRENCY
-              value: {{ .Values.runner.concurrency | quote }}
-            # Must use privileged mode for docker-in-docker
-            - name: KUBERNETES_PRIVILEGED
-              value: {{ if .Values.runner.privileged }}"true"{{ else }}"false"{{ end }}
-          volumeMounts:
-            - mountPath: /etc/gitlab-runner
-              name: config
-            - mountPath: /etc/ssl/certs
-              name: cacerts
-              readOnly: true
-        - name: add-docker-socket
-          image: alpine
-          command: [ "sh", "-c" ]
-          args:
-            - cat /tmp/config/additional.config >> /etc/gitlab-runner/config.toml
-          env:
-          volumeMounts:
-            - mountPath: /etc/gitlab-runner
-              name: config
-            - mountPath: /tmp/config
-              name: additional-config
-              readOnly: true
       containers:
-        - name: runner
-          image: {{ .Values.image }}
-          imagePullPolicy: {{ default "" .Values.imagePullPolicy | quote }}
-          args:
-            - run
-          volumeMounts:
-            - mountPath: /etc/gitlab-runner
-              name: config
-            - mountPath: /etc/ssl/certs
-              name: cacerts
-              readOnly: true
+      - name: {{ template "fullname" . }}
+        image: {{ .Values.image }}
+        imagePullPolicy: {{ default "" .Values.imagePullPolicy | quote }}
+        command: ["/bin/bash", "/scripts/entrypoint"]
+        env:
+        - name: GITLAB_URL
+          value: {{ template "gitlabUrl" . }}
+        - name: REGISTRATION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "fullname" . }}
+              key: runner-registration-token
+        - name: KUBERNETES_IMAGE
+          value: {{ .Values.runners.image | quote }}
+        {{ if .Values.runners.privileged }}
+        - name: KUBERNETES_PRIVILEGED
+          value: "true"
+        {{ end }}
+        - name: KUBERNETES_NAMESPACE
+          value: {{ default .Release.Namespace .Values.runners.namespace | quote }}
+        - name: KUBERNETES_CPU_LIMIT
+          value: {{ default "" .Values.runners.builds.cpuLimit | quote }}
+        - name: KUBERNETES_MEMORY_LIMIT
+          value: {{ default "" .Values.runners.builds.memoryLimit | quote }}
+        - name: KUBERNETES_CPU_REQUEST
+          value: {{ default "" .Values.runners.builds.cpuRequests | quote }}
+        - name: KUBERNETES_MEMORY_REQUEST
+          value: {{ default "" .Values.runners.builds.memoryRequests| quote }}
+        - name: KUBERNETES_SERVICE_CPU_LIMIT
+          value: {{ default "" .Values.runners.services.cpuLimit | quote }}
+        - name: KUBERNETES_SERVICE_MEMORY_LIMIT
+          value: {{ default "" .Values.runners.services.memoryLimit | quote }}
+        - name: KUBERNETES_SERVICE_CPU_REQUEST
+          value: {{ default "" .Values.runners.services.cpuRequests | quote }}
+        - name: KUBERNETES_SERVICE_MEMORY_REQUEST
+          value: {{ default "" .Values.runners.services.memoryRequests | quote }}
+        - name: KUBERNETES_HELPERS_CPU_LIMIT
+          value: {{ default "" .Values.runners.helpers.cpuLimit | quote }}
+        - name: KUBERNETES_HELPERS_MEMORY_LIMIT
+          value: {{ default "" .Values.runners.helpers.memoryLimit | quote }}
+        - name: KUBERNETES_HELPERS_CPU_REQUEST
+          value: {{ default "" .Values.runners.helpers.cpuRequests | quote }}
+        - name: KUBERNETES_HELPERS_MEMORY_REQUEST
+          value: {{ default "" .Values.runners.helpers.memoryRequests| quote }}
+        livenessProbe:
+          exec:
+            command: ["/usr/bin/pgrep","gitlab-ci-multi"]
+          initialDelaySeconds: 60
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command: ["/usr/bin/pgrep","gitlab-ci-multi"]
+          initialDelaySeconds: 10
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        {{- if .Values.certsSecretName }}
+        - name: custom-certs
+          readOnly: true
+          mountPath: /etc/gitlab-runner/certs/
+        {{- end }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
       {{- if .Values.rbac.enabled }}
       serviceAccountName: "{{ .Release.Name }}-gitlab-runner-serviceaccount"
       {{- end }}
@@ -96,12 +118,18 @@ spec:
       {{- end }}
       {{- end }}
       volumes:
-        - name: cacerts
-          hostPath:
-            path: /usr/share/ca-certificates/mozilla
-        - name: config
-          emptyDir: {}
-        - configMap:
-            name: "{{ .Release.Name }}-additional-config"
-          name: additional-config
-
+      {{ if .Values.runners.privileged }}
+      - name: var-run-docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+      {{ end }}
+      {{- if .Values.certsSecretName }}
+      - name: custom-certs
+        secret:
+          secretName: {{ .Values.certsSecretName }}
+      {{- end }}
+      - name: scripts
+        configMap:
+          name: {{ template "fullname" . }}
+{{ else }}
+{{ end }}
