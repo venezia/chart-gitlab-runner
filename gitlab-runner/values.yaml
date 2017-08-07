@@ -1,4 +1,4 @@
-## GitLab Runner image
+## GitLab Runner Image
 ## ref: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 ##
 image: gitlab/gitlab-runner:v9.4.2
@@ -9,34 +9,91 @@ image: gitlab/gitlab-runner:v9.4.2
 ##
 # imagePullPolicy:
 
-## The URL (with protocol) that the runners should connect with
-## Should probably be gitlab base href + /ci
-## ref: https://docs.gitlab.com/runner/executors/kubernetes.html
+## The GitLab Server URL (with protocol) that want to register the runner against
+## ref: https://docs.gitlab.com/runner/commands/README.html#gitlab-runner-register
 ##
-gitlabUrl: "http://gitlab.mysite.com/ci"
+gitlabUrl: https://gitlab.mysite.com/
 
-replicas: 1
-
-## The token the runner should present when registering
-## You can find this at gitlab base href + /admin/runners - like http://gitlab.mysite.com/admin/runners
+## The Registration Token for adding new Runners to the GitLab Server. This must
+## be retreived from your GitLab Instance.
+## ref: https://docs.gitlab.com/ce/ci/runners/README.html#creating-and-registering-a-runner
 ##
-registrationToken: "keanu-connery-53"
+runnerRegistrationToken: "please-set-me"
 
-runner:
-  concurrency: 4
-  enableDocker: true
+## Set the certsSecretName in order to pass custom certficates for GitLab Runner to use
+## Provide resource name for a Kubernetes Secret Object in the same namespace,
+## this is used to populate the /etc/gitlab-runner/certs directory
+## ref: https://docs.gitlab.com/runner/configuration/tls-self-signed.html#supported-options-for-self-signed-certificates
+##
+# certsSecretName:
+
+## Configure the maximum number of concurrent jobs
+## ref: https://docs.gitlab.com/runner/configuration/advanced-configuration.html#the-global-section
+##
+concurrent: 10
+
+## Defines in seconds how often to check GitLab for a new builds
+## ref: https://docs.gitlab.com/runner/configuration/advanced-configuration.html#the-global-section
+##
+checkInterval: 30
+
+## Enable RBAC
+rbac:
+  enabled: true
+
+
+## Configuration for the Pods that that the runner launches for each new job
+##
+runners:
+  ## Default container image to use for builds when none is specified
+  ##
+  image: ubuntu:16.04
+
+  ## Run all containers with the privileged flag enabled
+  ## This will allow the docker:dind image to run if you need to run Docker
+  ## commands. Please read the docs before turning this on:
+  ## ref: https://docs.gitlab.com/runner/executors/kubernetes.html#using-docker-dind
+  ##
   privileged: true
+
+  ## Namespace to run Kubernetes jobs in (defaults to 'default')
+  ##
   namespace: gitlab
-  limits:
-    jobs:
-      cpuLimit: 1
-      memoryLimit: 1Gi
-    service:
-      cpuLimit: 1
-      memoryLimit: 1Gi
-    helper:
-      cpuLimit: 500m
-      memoryLimit: 200Mi
+
+  ## Build Container specific configuration
+  ##
+  builds:
+    # cpuLimit: 200m
+    # memoryLimit: 256Mi
+    cpuRequests: 100m
+    memoryRequests: 128Mi
+
+  ## Service Container specific configuration
+  ##
+  services:
+    # cpuLimit: 200m
+    # memoryLimit: 256Mi
+    cpuRequests: 100m
+    memoryRequests: 128Mi
+
+  ## Helper Container specific configuration
+  ##
+  helpers:
+    # cpuLimit: 200m
+    # memoryLimit: 256Mi
+    cpuRequests: 100m
+    memoryRequests: 128Mi
+
+## Configure resource requests and limits
+## ref: http://kubernetes.io/docs/user-guide/compute-resources/
+##
+resources:
+  # limits:
+  #   memory: 256Mi
+  #   cpu: 200m
+  requests:
+    memory: 128Mi
+    cpu: 100m
 
 scheduling:
   affinity:
@@ -60,8 +117,3 @@ networkPolicy:
 #    podLabels:
 #      - key: app
 #        value: frontend
-
-## Configuration values for RBAC
-## RBAC is needed by gitlab for prometheus data exports
-rbac:
-  enabled: true
