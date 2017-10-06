@@ -1,7 +1,7 @@
 ## GitLab Runner Image
 ## ref: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 ##
-image: gitlab/gitlab-runner:v9.4.2
+image: gitlab/gitlab-runner:v9.5.1
 
 ## Specify a imagePullPolicy
 ## 'Always' if imageTag is 'latest', else set to 'IfNotPresent'
@@ -83,6 +83,12 @@ runners:
     # memoryLimit: 256Mi
     cpuRequests: 100m
     memoryRequests: 128Mi
+
+  executorRbac:
+    enabled: false
+    rules:
+    - role: edit
+      namespace: dummy
 
 ## Configure resource requests and limits
 ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
