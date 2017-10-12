@@ -1,0 +1,24 @@
+{{- if .Values.runners.executorRbac.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: "{{ .Release.Name }}-gitlab-executor-serviceaccount"
+---
+{{- $relname := .Release.Name -}}
+{{- $relnamespace := .Release.Namespace }}
+{{ range $i, $j := .Values.runners.executorRbac.rules }}
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: "{{ $relname }}-executor-{{ $i }}-role-binding"
+  namespace: {{ $j.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $j.role }}
+subjects:
+  - kind: ServiceAccount
+    name: "{{ $relname }}-gitlab-executor-serviceaccount"
+    namespace: {{ $relnamespace }}
+{{ end }}
+{{- end }}

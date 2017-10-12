@@ -18,7 +18,24 @@ data:
     # Register the runner
     /entrypoint register --non-interactive \
       --url $GITLAB_URL \
-      --executor kubernetes
+      --executor kubernetes \
+      --kubernetes-image {{ .Values.runners.image | quote }} \
+      --kubernetes-privileged={{ if .Values.runners.privileged }}true{{ else }}false{{ end }} \
+      --kubernetes-namespace {{ default .Release.Namespace .Values.runners.namespace }} \
+      --kubernetes-cpu-limit {{ default "" .Values.runners.builds.cpuLimit | quote }} \
+      --kubernetes-memory-limit {{ default "" .Values.runners.builds.memoryLimit | quote }} \
+      --kubernetes-cpu-request {{ default "" .Values.runners.builds.cpuRequests | quote }} \
+      --kubernetes-memory-request {{ default "" .Values.runners.builds.memoryRequests| quote }} \
+      --kubernetes-service-cpu-limit {{ default "" .Values.runners.services.cpuLimit | quote }} \
+      --kubernetes-service-memory-limit {{ default "" .Values.runners.services.memoryLimit | quote }} \
+      --kubernetes-service-cpu-request {{ default "" .Values.runners.services.cpuRequests | quote }} \
+      --kubernetes-service-memory-request {{ default "" .Values.runners.services.memoryRequests | quote }} \
+      --kubernetes-helper-cpu-limit {{ default "" .Values.runners.helpers.cpuLimit | quote }} \
+      --kubernetes-helper-memory-limit {{ default "" .Values.runners.helpers.memoryLimit | quote }} \
+      --kubernetes-helper-cpu-request {{ default "" .Values.runners.helpers.cpuRequests | quote }} \
+      --kubernetes-helper-memory-request {{ default "" .Values.runners.helpers.memoryRequests| quote }} \
+      --kubernetes-poll-interval 3 \
+      --kubernetes-poll-timeout 300
 
     # Start the runner
     /entrypoint run --user=gitlab-runner \
@@ -26,4 +43,4 @@ data:
   config.toml: |
     concurrent = {{ .Values.concurrent }}
     check_interval = {{ .Values.checkInterval }}
-      
+
