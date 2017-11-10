@@ -100,7 +100,7 @@ runners:
     #     resources: '["pods"]'
     #     verbs: '["list"]'
     #   - apiGroups: '[""]'
-    #     resources: '["pods/portforward]"]'
+    #     resources: '["pods/portforward"]'
     #     verbs: '["create", "delete"]'
 
 
