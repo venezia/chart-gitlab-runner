@@ -2,23 +2,34 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  namespace: {{ .Values.runners.namespace | quote }}
   name: "{{ .Release.Name }}-gitlab-executor-serviceaccount"
 ---
-{{- $relname := .Release.Name -}}
-{{- $relnamespace := .Release.Namespace }}
-{{ range $i, $j := .Values.runners.executorRbac.rules }}
+{{- range $i, $j := .Values.runners.executorRbac.roles }}
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: "{{ $.Release.Name }}-executor-{{ $i }}-role"
+  namespace: {{ $j.namespace }}
+rules:
+{{- range $j.rules }}
+- apiGroups: {{ .apiGroups }}
+  resources: {{ .resources }}
+  verbs: {{ .verbs }}
+{{- end }}
+---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
 metadata:
-  name: "{{ $relname }}-executor-{{ $i }}-role-binding"
+  name: "{{ $.Release.Name }}-executor-{{ $i }}-role-binding"
   namespace: {{ $j.namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ $j.role }}
+  name: "{{ $.Release.Name }}-executor-{{ $i }}-role"
 subjects:
   - kind: ServiceAccount
-    name: "{{ $relname }}-gitlab-executor-serviceaccount"
-    namespace: {{ $relnamespace }}
-{{ end }}
+    name: "{{ $.Release.Name }}-gitlab-executor-serviceaccount"
+    namespace: {{ $.Values.runners.namespace | quote }}
+{{- end }}
 {{- end }}
