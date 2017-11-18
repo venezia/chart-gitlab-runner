@@ -34,6 +34,9 @@ data:
       --kubernetes-helper-memory-limit {{ default "" .Values.runners.helpers.memoryLimit | quote }} \
       --kubernetes-helper-cpu-request {{ default "" .Values.runners.helpers.cpuRequests | quote }} \
       --kubernetes-helper-memory-request {{ default "" .Values.runners.helpers.memoryRequests| quote }} \
+      {{- if .Values.runners.executorRbac.enabled }}
+      --kubernetes-service-account "{{ .Release.Name }}-gitlab-executor-serviceaccount" \
+      {{- end }}
       --kubernetes-poll-interval 3 \
       --kubernetes-poll-timeout 300
 

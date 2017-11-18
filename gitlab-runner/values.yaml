@@ -1,7 +1,7 @@
 ## GitLab Runner Image
 ## ref: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 ##
-image: gitlab/gitlab-runner:v9.5.1
+image: gitlab/gitlab-runner:alpine-v10.1.0
 
 ## Specify a imagePullPolicy
 ## 'Always' if imageTag is 'latest', else set to 'IfNotPresent'
@@ -86,9 +86,23 @@ runners:
 
   executorRbac:
     enabled: false
-    rules:
-    - role: edit
-      namespace: dummy
+    roles:
+    ## Give admin rights to namespace dummy
+    # - namespace: dummy
+    #   rules:
+    #   - apiGroups: '["*"]'
+    #     resources: '["*"]'
+    #     verbs: '["*"]'
+    ## Give connectability rights to default helm
+    # - namespace: kube-system
+    #   rules:
+    #   - apiGroups: '[""]'
+    #     resources: '["pods"]'
+    #     verbs: '["list"]'
+    #   - apiGroups: '[""]'
+    #     resources: '["pods/portforward"]'
+    #     verbs: '["create", "delete"]'
+
 
 ## Configure resource requests and limits
 ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
